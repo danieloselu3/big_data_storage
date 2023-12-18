@@ -1,0 +1,110 @@
+Description: This template deploys a VPC base template which sets up a requisite network infrastructure into which resources can be deployed.
+
+Parameters:
+  EnvironmentName:
+    Description: A string that will be prefixed onto each resource created in the template. This will be used to help identify the resources created.
+    Default: DE-Extract
+
+  VpcCIDR:
+    Description: The IPv4 address space, given in CIDR notation, for the VPC hosting the scenario.
+    Default: 192.168.0.0/16
+
+  DataCenterPublicSubnetCIDR:
+    Description: The IPv4 address space, again given in CIDR notation, for the publicly accessible portion of the VPC.
+    Default: 192.168.10.0/24
+
+Resources:
+  VPC:
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+  
+  InternetGateway:
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+
+  InternetGatewayAttachment:
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+  DataCenterPublicSubnet:
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref DataCenterPublicSubnetCIDR
+      MapPublicIpOnLauch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Data Center Subnet
+
+  PublicRouteTable:
+    Properties:
+      VpcId: !Ref VPC
+      Tags: !Sub ${EnvironmentName} Public Routes
+
+  DefaultPublicRoute:
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  DataCenterPublicSubnetRouteTableAssociation:
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref DataCenterPublicSubnet
+
+  WindowsInstanceSG:
+    Properties:
+      GroupName: DE-Extract-WindowsInstanceSG
+      Description: This group permits RDP access to an instance deployed within the public subnet of the VPC.
+      VpcId: !Ref VPC
+
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3389
+          ToPort: 3389
+          CidrIP: 0.0.0.0/0
+
+      Tags:
+        - Key: Name
+          Value: DE-Extract-WindowsInstanceSG
+
+  FileServerSG:
+    Properties:
+      VpcId: !Ref VPC
+      GroupName: DE-Extract-FileServerSG
+      Description: This Security Group is responsible for permitting ssh access to the data center's file server from an internal source within the VPC.
+
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIP: 192.168.10.0/24
+
+      Tags:
+        - Key: Name
+          Value: DE-Extract-FileServerSG
+
+  FileGatewaySG:
+    Properties:
+      VpcId: !Ref VPC
+      GroupName: DE-Extract-FileGatewaySG
+      Description: Security Group for File Gateway Instance.
+
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 1
+          ToPort: 65534
+          CidrIP: 192.168.0.0/16
+
+      Tags:
+        - Key: Name
+          Value: DE-Extract-FileGatewaySG
