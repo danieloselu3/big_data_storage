@@ -4,17 +4,21 @@ Parameters:
   EnvironmentName:
     Description: A string that will be prefixed onto each resource created in the template. This will be used to help identify the resources created.
     Default: DE-Extract
+    Type: String
 
   VpcCIDR:
     Description: The IPv4 address space, given in CIDR notation, for the VPC hosting the scenario.
     Default: 192.168.0.0/16
+    Type: String
 
   DataCenterPublicSubnetCIDR:
     Description: The IPv4 address space, again given in CIDR notation, for the publicly accessible portion of the VPC.
     Default: 192.168.10.0/24
+    Type: String
 
 Resources:
   VPC:
+    Type: AWS::EC2::VPC
     Properties:
       CidrBlock: !Ref VpcCIDR
       EnableDnsSupport: true
@@ -24,17 +28,20 @@ Resources:
           Value: !Ref EnvironmentName
   
   InternetGateway:
+    Type: AWS::EC2::InternetGateway
     Properties:
       Tags:
         - Key: Name
           Value: !Ref EnvironmentName
 
   InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
     Properties:
       InternetGatewayId: !Ref InternetGateway
       VpcId: !Ref VPC
 
   DataCenterPublicSubnet:
+    Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select [ 0, !GetAZs '' ]
@@ -45,11 +52,13 @@ Resources:
           Value: !Sub ${EnvironmentName} Data Center Subnet
 
   PublicRouteTable:
+    Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref VPC
       Tags: !Sub ${EnvironmentName} Public Routes
 
   DefaultPublicRoute:
+    Type: AWS::EC2::Route
     DependsOn: InternetGatewayAttachment
     Properties:
       RouteTableId: !Ref PublicRouteTable
@@ -57,11 +66,13 @@ Resources:
       GatewayId: !Ref InternetGateway
 
   DataCenterPublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId: !Ref PublicRouteTable
       SubnetId: !Ref DataCenterPublicSubnet
 
   WindowsInstanceSG:
+    Type: AWS::EC2::SecurityGroup
     Properties:
       GroupName: DE-Extract-WindowsInstanceSG
       Description: This group permits RDP access to an instance deployed within the public subnet of the VPC.
@@ -78,6 +89,7 @@ Resources:
           Value: DE-Extract-WindowsInstanceSG
 
   FileServerSG:
+    Type: AWS::EC2::SecurityGroup
     Properties:
       VpcId: !Ref VPC
       GroupName: DE-Extract-FileServerSG
@@ -94,6 +106,7 @@ Resources:
           Value: DE-Extract-FileServerSG
 
   FileGatewaySG:
+    Type: AWS::EC2::SecurityGroup
     Properties:
       VpcId: !Ref VPC
       GroupName: DE-Extract-FileGatewaySG
