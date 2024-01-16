@@ -31,7 +31,6 @@ Resources:
             Effect: Allow
             Principal:
               Service: ec2.amazonaws.com
-      DeletionPolicy: Retain
 
   WindowsInstanceProfile:
     Type: 'AWS::IAM::InstanceProfile'
