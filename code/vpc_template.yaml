@@ -1,20 +1,17 @@
-Description: This template deploys a VPC base template which sets up a requisite network infrastructure into which resources can be deployed.
-
+AWSTemplateFormatVersion: "2010-09-09"
 Parameters:
   EnvironmentName:
-    Description: A string that will be prefixed onto each resource created in the template. This will be used to help identify the resources created.
-    Default: DE-Extract
     Type: String
-
+    Default: "DE-Extract"
+    Description: "A string that will be prefixed onto each resource created in the template."
   VpcCIDR:
-    Description: The IPv4 address space, given in CIDR notation, for the VPC hosting the scenario.
-    Default: 192.168.0.0/16
     Type: String
-
+    Default: "192.168.0.0/16"
+    Description: "The IPv4 address space, given in CIDR notation, for the VPC hosting the scenario challenge."
   DataCenterPublicSubnetCIDR:
-    Description: The IPv4 address space, again given in CIDR notation, for the publicly accessible portion of the VPC.
-    Default: 192.168.10.0/24
     Type: String
+    Default: "192.168.10.0/24"
+    Description: "The IPv4 address space, given in CIDR notation, for the publicly accessible portion of the VPC."
 
 Resources:
   VPC:
@@ -24,100 +21,96 @@ Resources:
       EnableDnsSupport: true
       EnableDnsHostnames: true
       Tags:
-        - Key: Name
+        - Key: "Name"
           Value: !Ref EnvironmentName
-  
+
   InternetGateway:
     Type: AWS::EC2::InternetGateway
     Properties:
       Tags:
-        - Key: Name
+        - Key: "Name"
           Value: !Ref EnvironmentName
 
   InternetGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
-      InternetGatewayId: !Ref InternetGateway
       VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
 
   DataCenterPublicSubnet:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      AvailabilityZone: !Select [0, !GetAZs ""]
       CidrBlock: !Ref DataCenterPublicSubnetCIDR
-      MapPublicIpOnLauch: true
+      MapPublicIpOnLaunch: true
       Tags:
-        - Key: Name
-          Value: !Sub ${EnvironmentName} Data Center Subnet
+        - Key: "Name"
+          Value: "DE-Extract Data Center Subnet"
 
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref VPC
-      Tags: !Sub ${EnvironmentName} Public Routes
+      Tags:
+        - Key: "Name"
+          Value: "DE-Extract Public Routes"
 
   DefaultPublicRoute:
     Type: AWS::EC2::Route
     DependsOn: InternetGatewayAttachment
     Properties:
       RouteTableId: !Ref PublicRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
+      DestinationCidrBlock: "0.0.0.0/0"
       GatewayId: !Ref InternetGateway
 
   DataCenterPublicSubnetRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      RouteTableId: !Ref PublicRouteTable
       SubnetId: !Ref DataCenterPublicSubnet
+      RouteTableId: !Ref PublicRouteTable
 
   WindowsInstanceSG:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupName: DE-Extract-WindowsInstanceSG
-      Description: This group permits RDP access to an instance deployed within the public subnet of the VPC.
       VpcId: !Ref VPC
-
+      GroupName: "DE-Extract-WindowsInstanceSG"
+      GroupDescription: "Security group for Windows instance"
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 3389
           ToPort: 3389
-          CidrIP: 0.0.0.0/0
-
+          CidrIp: "0.0.0.0/0"
       Tags:
-        - Key: Name
-          Value: DE-Extract-WindowsInstanceSG
+        - Key: "Name"
+          Value: "DE-Extract-WindowsInstanceSG"
 
   FileServerSG:
     Type: AWS::EC2::SecurityGroup
     Properties:
       VpcId: !Ref VPC
-      GroupName: DE-Extract-FileServerSG
-      Description: This Security Group is responsible for permitting ssh access to the data center's file server from an internal source within the VPC.
-
+      GroupName: "DE-Extract-FileServerSG"
+      GroupDescription: "Security group for file server"
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
-          CidrIP: 192.168.10.0/24
-
+          CidrIp: !Sub "${DataCenterPublicSubnetCIDR}"
       Tags:
-        - Key: Name
-          Value: DE-Extract-FileServerSG
+        - Key: "Name"
+          Value: "DE-Extract-FileServerSG"
 
   FileGatewaySG:
     Type: AWS::EC2::SecurityGroup
     Properties:
       VpcId: !Ref VPC
-      GroupName: DE-Extract-FileGatewaySG
-      Description: Security Group for File Gateway Instance.
-
+      GroupName: "DE-Extract-FileGatewaySG"
+      GroupDescription: "Security group for file gateway"
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 1
           ToPort: 65534
-          CidrIP: 192.168.0.0/16
-
+          CidrIp: !Ref VpcCIDR
       Tags:
-        - Key: Name
-          Value: DE-Extract-FileGatewaySG
+        - Key: "Name"
+          Value: "DE-Extract-FileGatewaySG"
