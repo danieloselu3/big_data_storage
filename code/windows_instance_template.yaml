@@ -43,7 +43,7 @@ Resources:
   WindowsInstanceRolePolicy:
     Type: 'AWS::IAM::Policy'
     Properties:
-      PolicyName: !Sub 'Windows-client-${StackName}'
+      PolicyName: !Sub 'Windows-client-${AWS::StackName}'
       PolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -68,3 +68,4 @@ Resources:
       Tags:
         - Key: Name
           Value: DE-Extract-Windows-Instance
+          
